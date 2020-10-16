@@ -546,9 +546,9 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
     model1 = model1.to("cpu")
     model2 = model2.to("cpu")
 
-    model1_name = './models/{}_{}_{}_model1_{}.pickle'.format(task,num_shared_classes, percent_shared_data,timestr)
-    model2_name = './models/{}_{}_{}_model2_{}.pickle'.format(task,num_shared_classes, percent_shared_data,timestr)
-    adv_name = './models/{}_{}_{}_adv_{}.pickle'.format(task,num_shared_classes, percent_shared_data,timestr)
+    model1_name = '/results/{}_{}_{}_model1_{}.pickle'.format(task,num_shared_classes, percent_shared_data,timestr)
+    model2_name = '/results/{}_{}_{}_model2_{}.pickle'.format(task,num_shared_classes, percent_shared_data,timestr)
+    adv_name = '/results/{}_{}_{}_adv_{}.pickle'.format(task,num_shared_classes, percent_shared_data,timestr)
 
     if savemodel:
         print("saving models at", timestr)
