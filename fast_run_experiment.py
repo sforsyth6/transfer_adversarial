@@ -143,8 +143,8 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
             normalize,
         ])
 
-        train_data = ImageFolder('/home/lricha/ImageNet/train', transform=transform_train)
-        test_data = CustomImageNetTest('/home/lricha/ImageNet/test', transform=transform_test)
+        train_data = ImageFolder('/data/train', transform=transform_train)
+        test_data = CustomImageNetTest('/data/val', transform=transform_test)
     else:
         mean = (0.4914, 0.4822, 0.4465)
         std = (0.2470, 0.2435, 0.2616)
