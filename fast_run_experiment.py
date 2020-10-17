@@ -144,7 +144,7 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
         ])
 
         train_data = ImageFolder(args.data + '/train', transform=transform_train)
-        test_data = CustomImageNetTest(args.data + '/val/', transform=transform_test)
+        test_data = ImageFolder(args.data + '/val/', transform=transform_test)
     else:
         mean = (0.4914, 0.4822, 0.4465)
         std = (0.2470, 0.2435, 0.2616)
@@ -308,12 +308,11 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
         model2.fc = nn.Linear(2048, model2_classes_len)
 
 
-    cuda = torch.cuda.is_available()
-    if gpu_num in range(torch.cuda.device_count()):
-        device = torch.device('cuda:'+str(gpu_num) if cuda else 'cpu')
-        torch.cuda.set_device(device)
-    else:
-        device = torch.device('cpu')
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+    if device == 'cuda':
+        model1 = torch.nn.DataParallel(model1, device_ids=range(torch.cuda.device_count()))
+        model2 = torch.nn.DataParallel(model2, device_ids=range(torch.cuda.device_count()))
 
     # Model Training
 
@@ -341,9 +340,15 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
                                               shuffle=True, num_workers=2)
 
     # get test sets ready
-    test_classes_by_index = np.array([test_data[index][1] for index in range(len(test_data))])
-
-    print (test_classes_by_index)
+    if task.upper() == "IMAGENET":
+        test_classes_by_index = []
+        for idx, label in enumerate(test_data.classes):
+            label_size = len([x for x in os.listdir(os.path.join(args.data, "val", label)) if ".JPEG" in x])
+            for i in range(label_size):
+                test_classes_by_index.append(idx)
+        test_classes_by_index = np.array(test_classes_by_index)
+    else:
+        test_classes_by_index = np.array([test_data[index][1] for index in range(len(test_data))])
 
     model1_test_indicies = np.array([])
     model2_test_indicies = np.array([])
