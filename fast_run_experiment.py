@@ -144,6 +144,8 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
         ])
 
         train_data = ImageFolder(args.data + '/train', transform=transform_train)
+        
+        #################################### change to ImageFolder instead of CustomImageFolderTest
         test_data = ImageFolder(args.data + '/val/', transform=transform_test)
     else:
         mean = (0.4914, 0.4822, 0.4465)
@@ -161,8 +163,11 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
         train_data = CIFAR10("data/",transform=transform_train,download=download_data)
         test_data = CIFAR10("data/", train=False, transform=transform_test,download=download_data)
 
-    #all_classes = set([x[1] for x in train_data])
-    all_classes = range(len(train_data.classes))
+    ######################### Change all_classes so it's not looping over 1.2 million images
+    if task.upper() == "IMAGENET":
+        all_classes = range(len(train_data.classes))
+    else:
+        all_classes = set([x[1] for x in train_data])
     shared_classes = random.sample(all_classes, num_shared_classes)
     split_classes = [c for c in all_classes if c not in shared_classes] # get classes not shared
 
@@ -185,6 +190,7 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
     print("model2 classes: {}".format(model2_classes))
 
     # split
+    ############################## Change the way classes_by_index is generated to avoid looping over dataset 
     if task.upper() == "IMAGENET":
         classes_by_index = []
         for idx, label in enumerate(train_data.classes):
@@ -308,6 +314,8 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
         model2.fc = nn.Linear(2048, model2_classes_len)
 
 
+    ################ Changed way cuda device was called and add DataParallel for the models
+
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     if device == 'cuda':
@@ -340,6 +348,7 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
                                               shuffle=True, num_workers=2)
 
     # get test sets ready
+    ############################## Change the way test_classes_by_index is generated to avoid looping over dataset 
     if task.upper() == "IMAGENET":
         test_classes_by_index = []
         for idx, label in enumerate(test_data.classes):
