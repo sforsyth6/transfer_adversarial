@@ -143,8 +143,8 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
             normalize,
         ])
 
-        train_data = ImageFolder('/data/train', transform=transform_train)
-        test_data = CustomImageNetTest('/data/val', transform=transform_test)
+        train_data = ImageFolder(args.data + '/train', transform=transform_train)
+        test_data = CustomImageNetTest(args.data + '/val/', transform=transform_test)
     else:
         mean = (0.4914, 0.4822, 0.4465)
         std = (0.2470, 0.2435, 0.2616)
@@ -161,7 +161,8 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
         train_data = CIFAR10("data/",transform=transform_train,download=download_data)
         test_data = CIFAR10("data/", train=False, transform=transform_test,download=download_data)
 
-    all_classes = set([x[1] for x in train_data])
+    #all_classes = set([x[1] for x in train_data])
+    all_classes = range(len(train_data.classes))
     shared_classes = random.sample(all_classes, num_shared_classes)
     split_classes = [c for c in all_classes if c not in shared_classes] # get classes not shared
 
@@ -184,7 +185,15 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
     print("model2 classes: {}".format(model2_classes))
 
     # split
-    classes_by_index = np.array([train_data[index][1] for index in range(len(train_data))])
+    if task.upper() == "IMAGENET":
+        classes_by_index = []
+        for idx, label in enumerate(train_data.classes):
+            label_size = len([x for x in os.listdir(os.path.join(args.data, "train", label)) if ".JPEG" in x])
+            for i in range(label_size):
+                classes_by_index.append(idx)
+        classes_by_index = np.array(classes_by_index)
+    else:
+        classes_by_index = np.array([train_data[index][1] for index in range(len(train_data))])
 
     model1_train_indicies = np.array([])
     model2_train_indicies = np.array([])
@@ -334,6 +343,8 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
     # get test sets ready
     test_classes_by_index = np.array([test_data[index][1] for index in range(len(test_data))])
 
+    print (test_classes_by_index)
+
     model1_test_indicies = np.array([])
     model2_test_indicies = np.array([])
     shared_test_indicies = np.array([])
@@ -353,7 +364,6 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
     # # dataloaders
     testloader_1 = torch.utils.data.DataLoader(model1_test_dataset, batch_size=len(model1_test_dataset),
                                               shuffle=True, num_workers=2)
-
 
     testloader_2 = torch.utils.data.DataLoader(model2_test_dataset, batch_size=len(model2_test_dataset),
                                               shuffle=True, num_workers=2)
@@ -546,9 +556,9 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
     model1 = model1.to("cpu")
     model2 = model2.to("cpu")
 
-    model1_name = '/results/{}_{}_{}_model1_{}.pickle'.format(task,num_shared_classes, percent_shared_data,timestr)
-    model2_name = '/results/{}_{}_{}_model2_{}.pickle'.format(task,num_shared_classes, percent_shared_data,timestr)
-    adv_name = '/results/{}_{}_{}_adv_{}.pickle'.format(task,num_shared_classes, percent_shared_data,timestr)
+    model1_name = './models/{}_{}_{}_model1_{}.pickle'.format(task,num_shared_classes, percent_shared_data,timestr)
+    model2_name = './models/{}_{}_{}_model2_{}.pickle'.format(task,num_shared_classes, percent_shared_data,timestr)
+    adv_name = './models/{}_{}_{}_adv_{}.pickle'.format(task,num_shared_classes, percent_shared_data,timestr)
 
     if savemodel:
         print("saving models at", timestr)
@@ -662,6 +672,7 @@ parser.add_argument('--adv_steps', default=1000)
 parser.add_argument('--download_data', action='store_true', default=False)
 parser.add_argument('--shared_classes', default=None)
 parser.add_argument('--shared_percent', default=None)
+parser.add_argument('--data', default="/data/")
 
 
 args = parser.parse_args()
