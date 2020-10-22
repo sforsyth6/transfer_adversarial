@@ -22,6 +22,7 @@ from collections import defaultdict
 from CustomImageNetTest import CustomImageNetTest
 from free_adv_training.train_fgsm import *
 from torch.autograd import Variable
+from OneCycle import *
 
 from torch.utils.data import Dataset, DataLoader
 
@@ -144,7 +145,7 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
         ])
 
         train_data = ImageFolder(args.data + '/train', transform=transform_train)
-        
+
         #################################### change to ImageFolder instead of CustomImageFolderTest
         test_data = ImageFolder(args.data + '/val/', transform=transform_test)
     else:
@@ -190,7 +191,7 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
     print("model2 classes: {}".format(model2_classes))
 
     # split
-    ############################## Change the way classes_by_index is generated to avoid looping over dataset 
+    ############################## Change the way classes_by_index is generated to avoid looping over dataset
     if task.upper() == "IMAGENET":
         classes_by_index = []
         for idx, label in enumerate(train_data.classes):
@@ -327,14 +328,27 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
     model1 = model1.to(device)
     model2 = model2.to(device)
 
-    criterion1 = nn.CrossEntropyLoss()
-    optimizer1 = optim.AdamW(model1.parameters(), lr=learning_rate)
-    scheduler1 = optim.lr_scheduler.MultiStepLR(optimizer1,milestones=[60, 120, 160], gamma=.2) #learning rate decay
+    if task.upper() != "IMAGENET":
+        criterion1 = nn.CrossEntropyLoss()
+        optimizer1 = optim.AdamW(model1.parameters(), lr=learning_rate)
+        scheduler1 = optim.lr_scheduler.MultiStepLR(optimizer1,milestones=[60, 120, 160], gamma=.2) #learning rate decay
 
 
-    criterion2 = nn.CrossEntropyLoss()
-    optimizer2 = optim.AdamW(model2.parameters(), lr=learning_rate)
-    scheduler2 = optim.lr_scheduler.MultiStepLR(optimizer2,milestones=[60, 120, 160], gamma=.2) #learning rate decay
+        criterion2 = nn.CrossEntropyLoss()
+        optimizer2 = optim.AdamW(model2.parameters(), lr=learning_rate)
+        scheduler2 = optim.lr_scheduler.MultiStepLR(optimizer2,milestones=[60, 120, 160], gamma=.2) #learning rate decay
+
+    else:
+
+        onecycle1 = OneCycle.OneCycle(int(len(model1_train_indicies) * n_epochs / batch_size), 0.8, prcnt=(n_epochs - 82) * 100/n_epochs, momentum_vals=(0.95, 0.8))
+        onecycle2 = OneCycle.OneCycle(int(len(model2_train_indicies`) * n_epochs /batch_size), 0.8, prcnt=(n_epochs - 82) * 100/n_epochs, momentum_vals=(0.95, 0.8))
+        
+        criterion1 = nn.CrossEntropyLoss()
+        optimizer1 =  optim.SGD(model1.parameters(), lr=learning_rate, momentum=0.95, weight_decay=1e-4)
+
+        criterion2 = nn.CrossEntropyLoss()
+        optimizer2 = optim.SGD(model2.parameters(), lr=learning_rate, momentum=0.95, weight_decay=1e-4)
+
 
     # make datasets
     model1_train_dataset = SplitDataset(model1_train_indicies, train_data, model1_class_mapping)
@@ -348,7 +362,7 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
                                               shuffle=True, num_workers=2)
 
     # get test sets ready
-    ############################## Change the way test_classes_by_index is generated to avoid looping over dataset 
+    ############################## Change the way test_classes_by_index is generated to avoid looping over dataset
     if task.upper() == "IMAGENET":
         test_classes_by_index = []
         for idx, label in enumerate(test_data.classes):
@@ -481,6 +495,12 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data
 
+                # one cycle policy
+                if task.upper() == "IMAGENET":
+                    lr, mom = onecycle1.calc()
+                    update_lr(optimizer1, lr)
+                    update_mom(optimizer1, mom)
+
                 # zero the parameter gradients
                 optimizer1.zero_grad()
 
@@ -510,6 +530,12 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
 
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data
+
+                # one cycle policy
+                if task.upper() == "IMAGENET":
+                    lr, mom = onecycle2.calc()
+                    update_lr(optimizer2, lr)
+                    update_mom(optimizer2, mom)
 
                 # zero the parameter gradients
                 optimizer2.zero_grad()
