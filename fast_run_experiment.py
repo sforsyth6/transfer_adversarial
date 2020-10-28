@@ -357,8 +357,8 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
 
     else:
 
-        onecycle1 = OneCycle.OneCycle(int(len(model1_train_indicies) * n_epochs / batch_size), 0.8, prcnt=(n_epochs - 82) * 100/n_epochs, momentum_vals=(0.95, 0.8))
-        onecycle2 = OneCycle.OneCycle(int(len(model2_train_indicies) * n_epochs /batch_size), 0.8, prcnt=(n_epochs - 82) * 100/n_epochs, momentum_vals=(0.95, 0.8))
+        onecycle1 = OneCycle(int(len(model1_train_indicies) * n_epochs / batch_size), 0.8, prcnt=(n_epochs - 82) * 100/n_epochs, momentum_vals=(0.95, 0.8))
+        onecycle2 = OneCycle(int(len(model2_train_indicies) * n_epochs /batch_size), 0.8, prcnt=(n_epochs - 82) * 100/n_epochs, momentum_vals=(0.95, 0.8))
         
         criterion1 = nn.CrossEntropyLoss()
         optimizer1 =  optim.SGD(model1.parameters(), lr=learning_rate, momentum=0.95, weight_decay=1e-4)
