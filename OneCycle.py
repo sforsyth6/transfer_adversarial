@@ -67,7 +67,7 @@ class OneCycle():
             return self.high_lr/self.div
         if self.iteration > 2 * self.step_len: # case c-d
             ratio = (self.iteration - 2 * self.step_len) / (self.nb - 2 * self.step_len)
-            lr = self.high_lr * ( 1 - ratio * (1-(1/self.div))/self.div
+            lr = self.high_lr * ( 1 - ratio * (1-(1/self.div)))/self.div
         elif self.iteration > self.step_len: # case b-c
             ratio = 1- (self.iteration -self.step_len)/self.step_len
             lr = self.high_lr * (1 + ratio * (self.div - 1)) / self.div
