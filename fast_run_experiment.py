@@ -448,6 +448,8 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
 
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data
+                
+                labels = labels.cuda()
 
                 # steps for adv training
                 for j in range(4):
@@ -478,6 +480,8 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
 
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data
+                
+                labels = labels.cuda()
 
                 # steps for adv training
                 for j in range(4):
@@ -511,6 +515,8 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
 
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data
+                
+                labels = labels.cuda()
 
                 # one cycle policy
                 if task.upper() == "IMAGENET":
@@ -547,6 +553,8 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
 
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data
+                
+                labels = labels.cuda()
 
                 # one cycle policy
                 if task.upper() == "IMAGENET":
