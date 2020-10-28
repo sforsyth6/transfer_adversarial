@@ -294,11 +294,28 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
         model2.fc = nn.Linear(2048, model2_classes_len)
 
     elif task.upper() == "IMAGENET":
-        model1 = models.wide_resnet50_2()
-        model2 = models.wide_resnet50_2()
+        if args.model == 'resnet18':
+            model1 = models.resnet18()
+            model2 = models.resnet18()
 
-        model1.fc = nn.Linear(2048, model1_classes_len)
-        model2.fc = nn.Linear(2048, model2_classes_len)
+            model1.fc = nn.Linear(512, model1_classes_len)
+            model2.fc = nn.Linear(512, model2_classes_len)
+        
+        elif args.model == 'resnet50':
+            model1 = models.resnet50()
+            model2 = models.resnet50()
+
+            model1.fc = nn.Linear(2048, model1_classes_len)
+            model2.fc = nn.Linear(2048, model2_classes_len)
+
+        elif args.model == 'resnet50_2':
+            model1 = models.wide_resnet50_2()
+            model2 = models.wide_resnet50_2()
+
+            model1.fc = nn.Linear(2048, model1_classes_len)
+            model2.fc = nn.Linear(2048, model2_classes_len)
+
+
     elif task.upper() == "FASHIONMNIST":
         model1 = models.resnet18()
         model2 = models.resnet18()
@@ -329,19 +346,19 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
     model2 = model2.to(device)
 
     if task.upper() != "IMAGENET":
-        criterion1 = nn.CrossEntropyLoss()
+        criterion1 = nn.CrossEntropyLoss().cuda()
         optimizer1 = optim.AdamW(model1.parameters(), lr=learning_rate)
         scheduler1 = optim.lr_scheduler.MultiStepLR(optimizer1,milestones=[60, 120, 160], gamma=.2) #learning rate decay
 
 
-        criterion2 = nn.CrossEntropyLoss()
+        criterion2 = nn.CrossEntropyLoss().cuda()
         optimizer2 = optim.AdamW(model2.parameters(), lr=learning_rate)
         scheduler2 = optim.lr_scheduler.MultiStepLR(optimizer2,milestones=[60, 120, 160], gamma=.2) #learning rate decay
 
     else:
 
         onecycle1 = OneCycle.OneCycle(int(len(model1_train_indicies) * n_epochs / batch_size), 0.8, prcnt=(n_epochs - 82) * 100/n_epochs, momentum_vals=(0.95, 0.8))
-        onecycle2 = OneCycle.OneCycle(int(len(model2_train_indicies`) * n_epochs /batch_size), 0.8, prcnt=(n_epochs - 82) * 100/n_epochs, momentum_vals=(0.95, 0.8))
+        onecycle2 = OneCycle.OneCycle(int(len(model2_train_indicies) * n_epochs /batch_size), 0.8, prcnt=(n_epochs - 82) * 100/n_epochs, momentum_vals=(0.95, 0.8))
         
         criterion1 = nn.CrossEntropyLoss()
         optimizer1 =  optim.SGD(model1.parameters(), lr=learning_rate, momentum=0.95, weight_decay=1e-4)
@@ -356,10 +373,10 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
 
     # create trainloader 1
     trainloader_1 = torch.utils.data.DataLoader(model1_train_dataset, batch_size=batch_size,
-                                              shuffle=True, num_workers=2)
+                                              shuffle=True, pin_memory=True, num_workers=args.workers)
     # create trainloader 2
     trainloader_2 = torch.utils.data.DataLoader(model2_train_dataset, batch_size=batch_size,
-                                              shuffle=True, num_workers=2)
+                                              shuffle=True, pin_memory=True, num_workers=args.workers)
 
     # get test sets ready
     ############################## Change the way test_classes_by_index is generated to avoid looping over dataset
@@ -391,13 +408,13 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
 
     # # dataloaders
     testloader_1 = torch.utils.data.DataLoader(model1_test_dataset, batch_size=len(model1_test_dataset),
-                                              shuffle=True, num_workers=2)
+                                              shuffle=True, pin_memory=True, num_workers=args.workers)
 
     testloader_2 = torch.utils.data.DataLoader(model2_test_dataset, batch_size=len(model2_test_dataset),
-                                              shuffle=True, num_workers=2)
+                                              shuffle=True, pin_memory=True, num_workers=args.workers)
 
     testloader_shared = torch.utils.data.DataLoader(shared_test_dataset, batch_size=batch_size,
-                                              shuffle=True, num_workers=2)
+                                              shuffle=True, pin_memory=True, num_workers=args.workers)
 
     # shared_x_test = []
     # shared_y_test = []
@@ -426,8 +443,8 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
         # train model 1
         for epoch in tqdm(range(n_epochs),desc="Epoch"):  # loop over the dataset multiple times
             for i, data in enumerate(trainloader_1, 0):
-                if cuda:
-                    data = tuple(d.cuda() for d in data)
+                #if cuda: ################################################################################check  here if broke
+                    #data = tuple(d.cuda() for d in data)
 
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data
@@ -456,8 +473,8 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
         # train model 2
         for epoch in tqdm(range(n_epochs),desc="Epoch"):  # loop over the dataset multiple times
             for i, data in enumerate(trainloader_2, 0):
-                if cuda:
-                    data = tuple(d.cuda() for d in data)
+                #if cuda: ################################################################################check  here if broke
+                #    data = tuple(d.cuda() for d in data)
 
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data
@@ -489,8 +506,8 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
 
             running_loss = 0.0
             for i, data in enumerate(trainloader_1, 0):
-                if cuda:
-                    data = tuple(d.cuda() for d in data)
+                #if cuda: ################################################################################check  here if broke
+                #    data = tuple(d.cuda() for d in data)
 
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data
@@ -525,8 +542,8 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
 
             running_loss = 0.0
             for i, data in enumerate(trainloader_2, 0):
-                if cuda:
-                    data = tuple(d.cuda() for d in data)
+                #if cuda: ################################################################################check  here if broke
+                #    data = tuple(d.cuda() for d in data)
 
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data
@@ -714,7 +731,9 @@ parser.add_argument('--shared_classes', default=None)
 parser.add_argument('--shared_percent', default=None)
 parser.add_argument('--data', default="/data/")
 parser.add_argument('--save-model-dir', default='/results/')
-
+parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
+                    help='number of data loading workers (default: 4)')
+parser.add_argument('--model', default='resnet50_2', help="choose model: resnet18, resnet50, resnet50_2")
 
 args = parser.parse_args()
 
