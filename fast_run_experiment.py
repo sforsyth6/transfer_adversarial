@@ -89,12 +89,9 @@ def normalize_imgs(imgs, mean, std):
     return torch.stack(nrm_imgs)
 
 
-def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=128, eps=.3, adv_steps=1000, learning_rate=.0004, gpu_num=1,adv_training="none",task="CIFAR100", masked=False, savemodel=False, download_data=False):
+def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=128, eps=.3, adv_steps=1000, learning_rate=.0004,adv_training="none",task="CIFAR100", masked=False, savemodel=False, download_data=False):
     print("epochs,batch_size,eps,adv_steps,learning_rate,task")
     print(n_epochs,batch_size,eps,adv_steps,learning_rate,task)
-
-    cuda = torch.cuda.is_available()
-
 
     if task.upper() == "CIFAR100":
         mean = (0.5070751592371323, 0.48654887331495095, 0.4409178433670343)
@@ -357,8 +354,8 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
 
     else:
 
-        onecycle1 = OneCycle.OneCycle(int(len(model1_train_indicies) * n_epochs / batch_size), 0.8, prcnt=(n_epochs - 82) * 100/n_epochs, momentum_vals=(0.95, 0.8))
-        onecycle2 = OneCycle.OneCycle(int(len(model2_train_indicies) * n_epochs /batch_size), 0.8, prcnt=(n_epochs - 82) * 100/n_epochs, momentum_vals=(0.95, 0.8))
+        onecycle1 = OneCycle(int(len(model1_train_indicies) * n_epochs / batch_size), 0.8, prcnt=(n_epochs - 82) * 100/n_epochs, momentum_vals=(0.95, 0.8))
+        onecycle2 = OneCycle(int(len(model2_train_indicies) * n_epochs /batch_size), 0.8, prcnt=(n_epochs - 82) * 100/n_epochs, momentum_vals=(0.95, 0.8))
         
         criterion1 = nn.CrossEntropyLoss()
         optimizer1 =  optim.SGD(model1.parameters(), lr=learning_rate, momentum=0.95, weight_decay=1e-4)
@@ -407,10 +404,10 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
 
 
     # # dataloaders
-    testloader_1 = torch.utils.data.DataLoader(model1_test_dataset, batch_size=len(model1_test_dataset),
+    testloader_1 = torch.utils.data.DataLoader(model1_test_dataset, batch_size=batch_size,
                                               shuffle=True, pin_memory=True, num_workers=args.workers)
 
-    testloader_2 = torch.utils.data.DataLoader(model2_test_dataset, batch_size=len(model2_test_dataset),
+    testloader_2 = torch.utils.data.DataLoader(model2_test_dataset, batch_size=batch_size,
                                               shuffle=True, pin_memory=True, num_workers=args.workers)
 
     testloader_shared = torch.utils.data.DataLoader(shared_test_dataset, batch_size=batch_size,
@@ -448,6 +445,9 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
 
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data
+
+                labels = labels.to(device)
+
 
                 # steps for adv training
                 for j in range(4):
@@ -502,6 +502,7 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
 
     else:
         # train model 1
+        
         for epoch in tqdm(range(n_epochs),desc="Epoch"):  # loop over the dataset multiple times
 
             running_loss = 0.0
@@ -511,6 +512,8 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
 
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data
+
+                labels = labels.to(device)
 
                 # one cycle policy
                 if task.upper() == "IMAGENET":
@@ -548,6 +551,8 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data
 
+                labels = labels.to(device)
+
                 # one cycle policy
                 if task.upper() == "IMAGENET":
                     lr, mom = onecycle2.calc()
@@ -569,13 +574,13 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
                     print('[%d, %5d] loss: %.3f' %
                           (epoch + 1, i + 1, running_loss / 2000))
                     running_loss = 0.0
-
+        
         print('Finished Training model2')
 
     model1.eval()
 
     print("Running attack...")
-
+    
     if masked:
         adversary = MaskedPGDAttack(
             model1, loss_fn=nn.CrossEntropyLoss(reduction="sum"), eps=eps,
@@ -624,47 +629,44 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
         torch.save(adversary, adv_name)
 
 
-    model1_x_test = []
-    model1_y_test = []
-    for i in range(len(model1_test_dataset)):
-        data = model1_test_dataset[i]
-        model1_x_test.append(data[0])
-        model1_y_test.append(data[1])
-
-    model1_x_test = torch.stack(model1_x_test)
-    model1_y_test = torch.tensor(model1_y_test)
-
-    model2_x_test = []
-    model2_y_test = []
-    for i in range(len(model2_test_dataset)):
-        data = model2_test_dataset[i]
-        model2_x_test.append(data[0])
-        model2_y_test.append(data[1])
-
     model1 = model1.to(device)
     model2 = model2.to(device)
 
-    model2_x_test = torch.stack(model2_x_test)
-    model2_y_test = torch.tensor(model2_y_test)
-
-    model1_x_test = model1_x_test.to(device)
-    model2_x_test = model2_x_test.to(device)
-
+    
     #  Eval
     with torch.no_grad():
         model1.eval()
         model2.eval()
+        
+        model1_y_test = np.array([])
+        model2_y_test = np.array([])
+        
+        output1 = []
+        output2 = []
 
         # model1 outputs
+        for data in testloader_1:
+            x_test = data[0]#.to(device)
+            y_test = data[1]
+            model1_y_test = np.concatenate((model1_y_test, y_test.numpy()))
 
-        output1 = model1(model1_x_test)
+            output1.append(model1(x_test))
+        
         shared_output1 = model1(shared_x_test)
         adv_output1 = model1(adv_untargeted)
 
         # model2 outputs
-        output2 = model2(model2_x_test)
+        for data in testloader_2:
+            x_test = data[0]#.to(device)
+            y_test = data[1]
+            model2_y_test = np.concatenate((model2_y_test, y_test.numpy()))
+
+
+            output2.append(model2(x_test))
+    
         shared_output2 = model2(shared_x_test)
         adv_output2 = model2(adv_untargeted)
+
 
         if task.upper() == "CIFAR100":
 
@@ -719,7 +721,6 @@ parser = argparse.ArgumentParser(description='Experiment')
 
 parser.add_argument('--task', default="CIFAR100")
 parser.add_argument('--epochs', default=200)
-parser.add_argument('--gpu', default=0)
 parser.add_argument('--batch_size', default=128)
 parser.add_argument('--masked', action='store_true')
 parser.add_argument('--savemodels', action='store_true', default=False)
@@ -744,8 +745,11 @@ elif args.task.upper() == "CIFAR100":
     loop_class_list = [2,25,50,75,100]
     loop_percent_list = [0,25,50,75,100]
 elif args.task.upper() == "IMAGENET":
-    loop_class_list = [2,100, 250, 500,750, 1000]
-    loop_percent_list = [0,25,50,75,100]
+    #loop_class_list = [2,100, 250, 500,750, 1000]
+    loop_class_list = [2, 500, 1000]
+    #loop_percent_list = [0,25,50,75,100]
+    loop_percent_list = [0,50,100]
+
 else:
     loop_class_list = [2,3,5,7,10]
     loop_percent_list = [0,25,50,75,100]
@@ -758,6 +762,6 @@ for i in range(int(args.loops)):
             print("number of classes:", num_classes)
             print("shared percentage:", percent)
 
-            experiment(num_classes,percent,task=args.task, n_epochs=int(args.epochs),gpu_num=int(args.gpu),batch_size=int(args.batch_size), masked=args.masked, savemodel=args.savemodels, adv_steps=int(args.adv_steps), download_data=args.download_data, adv_training=args.advtrain)
+            experiment(num_classes,percent,task=args.task, n_epochs=int(args.epochs),batch_size=int(args.batch_size), masked=args.masked, savemodel=args.savemodels, adv_steps=int(args.adv_steps), download_data=args.download_data, adv_training=args.advtrain)
 
             print("----------------------------------------------")
