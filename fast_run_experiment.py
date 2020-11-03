@@ -758,10 +758,11 @@ else:
 for i in range(int(args.loops)):
     for num_classes in loop_class_list:
         for percent in loop_percent_list:
+            s = time.time()
             print("----------------------------------------------")
             print("number of classes:", num_classes)
             print("shared percentage:", percent)
 
             experiment(num_classes,percent,task=args.task, n_epochs=int(args.epochs),batch_size=int(args.batch_size), masked=args.masked, savemodel=args.savemodels, adv_steps=int(args.adv_steps), download_data=args.download_data, adv_training=args.advtrain)
-
+            print (time.time() - s)
             print("----------------------------------------------")
