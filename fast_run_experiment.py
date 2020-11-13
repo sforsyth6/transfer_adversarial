@@ -735,6 +735,7 @@ parser.add_argument('--save-model-dir', default='/results/')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--model', default='resnet50_2', help="choose model: resnet18, resnet50, resnet50_2")
+parser.add_argument('--shared', default='2', type=int, help="choose number shared classes: 0,2,500,1000")
 
 args = parser.parse_args()
 
@@ -746,7 +747,7 @@ elif args.task.upper() == "CIFAR100":
     loop_percent_list = [0,25,50,75,100]
 elif args.task.upper() == "IMAGENET":
     #loop_class_list = [2,100, 250, 500,750, 1000]
-    loop_class_list = [2, 500, 1000]
+    loop_class_list = [args.shared]
     #loop_percent_list = [0,25,50,75,100]
     loop_percent_list = [0,50,100]
 
