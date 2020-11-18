@@ -317,7 +317,6 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
         model1 = models.resnet18()
         model2 = models.resnet18()
 
-
         model1.fc = nn.Linear(512, model1_classes_len)
         model2.fc = nn.Linear(512, model2_classes_len)
     else:
@@ -331,17 +330,18 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
 
     ################ Changed way cuda device was called and add DataParallel for the models
 
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device = 'cuda:4,5,6,7' if torch.cuda.is_available() else 'cpu'
 
-    if device == 'cuda':
-        model1 = torch.nn.DataParallel(model1, device_ids=range(torch.cuda.device_count()))
-        model2 = torch.nn.DataParallel(model2, device_ids=range(torch.cuda.device_count()))
+    #if device == 'cuda':
+    model1 = torch.nn.DataParallel(model1, device_ids=[4,5,6,7] )#range(torch.cuda.device_count()))
+    model2 = torch.nn.DataParallel(model2, device_ids=[4,5,6,7] )#range(torch.cuda.device_count()))
 
     # Model Training
 
     model1 = model1.to(device)
     model2 = model2.to(device)
 
+    
     if task.upper() != "IMAGENET":
         criterion1 = nn.CrossEntropyLoss().cuda()
         optimizer1 = optim.AdamW(model1.parameters(), lr=learning_rate)
@@ -412,7 +412,7 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
 
     testloader_shared = torch.utils.data.DataLoader(shared_test_dataset, batch_size=batch_size,
                                               shuffle=True, pin_memory=True, num_workers=args.workers)
-
+    
     # shared_x_test = []
     # shared_y_test = []
     # for i in range(len(shared_test_dataset)):
@@ -513,6 +513,7 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data
 
+                inputs = inputs.to(device)
                 labels = labels.to(device)
 
                 # one cycle policy
@@ -551,6 +552,7 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
                 # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data
 
+                inputs = inputs.to(device)
                 labels = labels.to(device)
 
                 # one cycle policy
@@ -576,7 +578,7 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
                     running_loss = 0.0
         
         print('Finished Training model2')
-
+    
     model1.eval()
 
     print("Running attack...")
@@ -749,7 +751,7 @@ elif args.task.upper() == "IMAGENET":
     #loop_class_list = [2,100, 250, 500,750, 1000]
     loop_class_list = [args.shared]
     #loop_percent_list = [0,25,50,75,100]
-    loop_percent_list = [0,50,100]
+    loop_percent_list = [25,75]
 
 else:
     loop_class_list = [2,3,5,7,10]
