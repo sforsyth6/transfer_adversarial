@@ -330,11 +330,11 @@ def experiment(num_shared_classes, percent_shared_data, n_epochs=200,batch_size=
 
     ################ Changed way cuda device was called and add DataParallel for the models
 
-    device = 'cuda:4,5,6,7' if torch.cuda.is_available() else 'cpu'
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     #if device == 'cuda':
-    model1 = torch.nn.DataParallel(model1, device_ids=[4,5,6,7] )#range(torch.cuda.device_count()))
-    model2 = torch.nn.DataParallel(model2, device_ids=[4,5,6,7] )#range(torch.cuda.device_count()))
+    model1 = torch.nn.DataParallel(model1, range(torch.cuda.device_count()))
+    model2 = torch.nn.DataParallel(model2, range(torch.cuda.device_count()))
 
     # Model Training
 
